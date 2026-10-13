@@ -39,6 +39,7 @@ export function getLocale(locales) {
 
 export const env = (() => {
   const { host } = window.location;
+  if (host.endsWith('.az-boxa.aem.live')) return 'stage';
   if (host.endsWith('.aem.live')) return 'prod';
   if (!['--', 'local'].some((check) => host.includes(check))) return 'prod';
   if (['--'].some((check) => host.includes(check))) return 'stage';
