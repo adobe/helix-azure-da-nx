@@ -10,3 +10,7 @@ helix-importer-ui
 .claude/settings.local.json
 PR-throwaways/
 .scout/
+
+.hlx/.da-token*.json
+
+content

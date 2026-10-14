@@ -77,8 +77,8 @@ export const DA_ETC = getEnv('da-etc', DA_ETC_ENVS);
 export const DA_FEEDBACK = getEnv('da-feedback', DA_FEEDBACK_ENVS);
 export const DA_TRANSLATE = getEnv('da-translate', DA_TRANSLATE_ENVS);
 
-export const HLX_ADMIN = 'https://admin.hlx.page';
-export const AEM_API = 'https://api.aem.live';
+export const HLX_ADMIN = 'about:error'; // not supported
+export const AEM_API = 'https://api.az-boxa.aem.live';
 
 export const ALLOWED_TOKEN = [
   DA_ADMIN,

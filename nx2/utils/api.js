@@ -663,10 +663,10 @@ export const isHlx6 = (() => {
 
   return (org, site) => {
     if (!site) return false;
-
-    const path = `/${org}/${site}`;
-    cache[path] ??= fetchUpgradeStatus(path);
-    return cache[path];
+    return true;
+    // const path = `/${org}/${site}`;
+    // cache[path] ??= fetchUpgradeStatus(path);
+    // return cache[path];
   };
 })();
 

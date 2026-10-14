@@ -63,8 +63,8 @@ export const DA_CONTENT = getEnv('da-content', DA_CONTENT_ENVS);
 export const DA_PREVIEW = getEnv('da-preview', DA_LIVE_PREVIEW_ENVS);
 export const DA_ETC = getEnv('da-etc', DA_ETC_ENVS);
 
-export const HLX_ADMIN = 'https://admin.hlx.page';
-export const AEM_API = 'https://api.aem.live';
+export const HLX_ADMIN = 'about:error'; // not supported
+export const AEM_API = 'https://api.az-boxa.aem.live';
 
 /**
  * Builds a live-preview URL for a site, e.g.
