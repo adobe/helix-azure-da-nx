@@ -377,7 +377,7 @@ class NXEwActions extends LitElement {
       const iframeUrl = new URL(iframe.src);
       const pathname = `/${path.split('/').filter(Boolean).map(encodeURIComponent).join('/')}`;
       if (iframeUrl.protocol !== 'https:' || iframeUrl.pathname !== pathname) return undefined;
-      const suffix = ['preview.da.live', 'stage-preview.da.live']
+      const suffix = ['da-preview.az-boxa.aem.live', 'preview.da.live', 'stage-preview.da.live']
         .map((domain) => `--${site}--${org}.${domain}`.toLowerCase())
         .find((domain) => iframeUrl.hostname.endsWith(domain));
       const branch = suffix && iframeUrl.hostname.slice(0, -suffix.length);

@@ -51,7 +51,7 @@ function getParts() {
 /**
  * Constructs the appropriate URL based on the reference type, forwarding parent
  * search params to the iframe
- * @param {boolean} [usePreview] - Load from preview.da.live (authenticated) instead
+ * @param {boolean} [usePreview] - Load from DA preview (authenticated) instead
  * of the public aem.live host
  * @returns {string} The constructed URL for the iframe
  */
@@ -94,7 +94,7 @@ function handleLoad({ target }) {
 async function createIframe(el) {
   if (!document.querySelector('header')) document.body.classList.add('no-shell');
   const { org, repo, ref } = getParts();
-  // Prefer authenticated preview.da.live; fall back to public aem.live when the
+  // Prefer authenticated DA preview; fall back to public aem.live when the
   // user is anonymous or the login handshake fails.
   const usePreview = ref !== 'local' && await livePreviewLogin(org, repo, ref);
   const iframe = document.createElement('iframe');

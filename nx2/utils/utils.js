@@ -37,7 +37,7 @@ const DA_CONTENT_ENVS = {
 const DA_LIVE_PREVIEW_ENVS = {
   local: 'https://localhost:8000',
   stage: 'https://stage-preview.da.live',
-  prod: 'https://preview.da.live',
+  prod: 'https://da-preview.az-boxa.aem.live',
 };
 
 const DA_ETC_ENVS = {

@@ -19,7 +19,7 @@ export function getQuickEditPortalSrc(href, { bootstrap = false } = {}) {
 
 export function getQuickEditPreviewSrc(href) {
   const url = new URL(href);
-  url.hostname = url.hostname.replace(/\.aem\.page$/, '.preview.da.live');
+  url.hostname = url.hostname.replace(/\.aem\.page$/, '.da-preview.az-boxa.aem.live');
   if (!url.searchParams.has('quick-edit')) url.searchParams.set('quick-edit', 'on');
   url.searchParams.set('controller', 'parent');
   return url.href;

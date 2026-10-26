@@ -86,6 +86,8 @@ describe('nx-ew-actions', () => {
       await el.updateComplete;
       await clock.tickAsync(100);
       expect(await el._branchPromise).to.equal('legacy-feature');
+      iframe.src = 'https://feature--site--org.da-preview.az-boxa.aem.live/Docs/Page';
+      expect(el._readLegacyBranch()).to.equal('feature');
       iframe.src = 'https://main--site--org.stage-preview.da.live/Docs/Page';
       expect(el._readLegacyBranch()).to.equal('main');
       iframe.src = 'https://wrong--site--org.preview.da.live/old-document';
@@ -93,6 +95,8 @@ describe('nx-ew-actions', () => {
       iframe.src = 'https://wrong--other-site--org.preview.da.live/Docs/Page';
       expect(el._readLegacyBranch()).to.equal(undefined);
       iframe.src = 'https://wrong--site--org.preview.da.live.evil.example/Docs/Page';
+      expect(el._readLegacyBranch()).to.equal(undefined);
+      iframe.src = 'https://wrong--site--org.da-preview.az-boxa.aem.live.evil.example/Docs/Page';
       expect(el._readLegacyBranch()).to.equal(undefined);
       iframe.src = 'https://legacy-feature--site--org.preview.da.live/Docs/Page';
       reportBranch({ path, status: 'error', error: 'Config unavailable' });

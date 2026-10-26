@@ -8,8 +8,10 @@ function removeQuickEditParam() {
 
 function navigateToAemPageOrReload() {
   const currentUrl = new URL(window.location.href);
-  if (currentUrl.origin.endsWith('.preview.da.live')) {
-    const newOrigin = currentUrl.origin.replace('.preview.da.live', '.aem.page');
+  const suffix = ['.da-preview.az-boxa.aem.live', '.preview.da.live']
+    .find((domain) => currentUrl.origin.endsWith(domain));
+  if (suffix) {
+    const newOrigin = currentUrl.origin.replace(suffix, '.aem.page');
     const newUrl = new URL(`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`, `${newOrigin}/`);
     newUrl.searchParams.delete('quick-edit');
     window.location.replace(newUrl.href);

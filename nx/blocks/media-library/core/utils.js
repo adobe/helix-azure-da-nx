@@ -151,7 +151,7 @@ export async function livePreviewLogin(owner, repo) {
     const { accessToken } = imsDetails || {};
     const url = `${getLivePreviewUrl(owner, repo)}/gimme_cookie`;
 
-    debugLog('Setting preview.da.live cookie', { owner, repo, url });
+    debugLog('Setting DA preview cookie', { owner, repo, url });
 
     const response = await fetch(url, {
       credentials: 'include',

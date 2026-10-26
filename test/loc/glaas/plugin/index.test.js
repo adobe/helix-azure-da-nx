@@ -96,7 +96,7 @@ describe('GLaaS loc-images plugin (companion util)', () => {
       expect(rows.find((row) => row.src === aemPageSrc).needsAuthenticatedFetch).to.be.false;
     });
 
-    it('rewrites an aem.page src thumbnail to preview.da.live and records its preview host', () => {
+    it('rewrites an aem.page src thumbnail to DA preview and records its preview host', () => {
       const aemPageSrc = 'https://main--site--org.aem.page/media_abc.jpg';
       const html = `<body><main><img src="${aemPageSrc}"></main></body>`;
 

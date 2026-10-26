@@ -11,7 +11,7 @@ describe('standalone quick-edit shell', () => {
   it('uses the aem.page document as the standalone shell', () => {
     expect(isStandaloneShell('https://main--site--org.aem.page/path?quick-edit=on')).to.equal(true);
     expect(isStandaloneShell(
-      'https://main--site--org.preview.da.live/path?quick-edit=on',
+      'https://main--site--org.da-preview.az-boxa.aem.live/path?quick-edit=on',
     )).to.equal(false);
     expect(isStandaloneShell(
       'https://main--site--org.aem.page/path?quick-edit=on&controller=parent',
@@ -38,7 +38,7 @@ describe('standalone quick-edit shell', () => {
     expect(getQuickEditPreviewSrc(
       'https://main--site--org.aem.page/path?quick-edit=feature%2Fqe#section',
     )).to.equal(
-      'https://main--site--org.preview.da.live/path?quick-edit=feature%2Fqe&controller=parent#section',
+      'https://main--site--org.da-preview.az-boxa.aem.live/path?quick-edit=feature%2Fqe&controller=parent#section',
     );
   });
 

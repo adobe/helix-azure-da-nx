@@ -253,6 +253,7 @@ export function isInternalToSite(urlString, org, repo) {
 
     const isAemDomain = url.hostname === `main--${repo}--${org}.aem.page`
         || url.hostname === `main--${repo}--${org}.aem.live`
+        || url.hostname === `main--${repo}--${org}${Domains.PREVIEW_DA_LIVE}`
         || url.hostname === `main--${repo}--${org}.preview.da.live`;
 
     const hasOrgRepoPath = url.pathname.startsWith(`/${org}/${repo}/`);
@@ -352,7 +353,8 @@ export function convertToPreviewDaLive(aemPageUrl) {
 
 export function convertToAemPage(url) {
   if (!url || typeof url !== 'string') return url;
-  return url.replace(Domains.PREVIEW_DA_LIVE, Domains.AEM_PAGE);
+  return url.replace(Domains.PREVIEW_DA_LIVE, Domains.AEM_PAGE)
+    .replace('.preview.da.live', Domains.AEM_PAGE);
 }
 
 export function resolveMediaUrl(mediaUrl, org, repo, usePreviewDaLive = false) {
@@ -450,7 +452,7 @@ export function etcFetch(href, api, options) {
   return fetch(url, opts);
 }
 
-// Preview.da.live URL helper
+// DA preview URL helper
 export function getLivePreviewUrl(owner, repo) {
   return `https://main--${repo}--${owner}${Domains.PREVIEW_DA_LIVE}`;
 }

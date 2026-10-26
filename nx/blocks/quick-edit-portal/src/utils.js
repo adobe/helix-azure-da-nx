@@ -5,7 +5,7 @@ import { isRenderedBlock } from './rerender-scope.js';
 const DA_LIVE_PREVIEW_ENVS = {
   local: 'localhost:8000',
   stage: 'stage-preview.da.live',
-  prod: 'preview.da.live',
+  prod: 'da-preview.az-boxa.aem.live',
 };
 
 export async function getToken() {

@@ -37,7 +37,7 @@ export const MediaType = Object.freeze({
 
 const AEM_PAGE = '.aem.page';
 const AEM_LIVE = '.aem.live';
-const PREVIEW_DA_LIVE = '.preview.da.live';
+const PREVIEW_DA_LIVE = '.da-preview.az-boxa.aem.live';
 
 export const Domains = Object.freeze({
   AEM_PAGE,

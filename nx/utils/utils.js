@@ -37,7 +37,7 @@ const DA_CONTENT_ENVS = {
 const DA_LIVE_PREVIEW_ENVS = {
   dev: 'https://localhost:8000',
   stage: 'https://stage-preview.da.live',
-  prod: 'https://preview.da.live',
+  prod: 'https://da-preview.az-boxa.aem.live',
 };
 
 const DA_ETC_ENVS = {
@@ -68,7 +68,7 @@ export const AEM_API = 'https://api.az-boxa.aem.live';
 
 /**
  * Builds a live-preview URL for a site, e.g.
- * https://main--repo--org.preview.da.live. Uses the env-aware DA_PREVIEW origin
+ * https://main--repo--org.da-preview.az-boxa.aem.live. Uses the env-aware DA_PREVIEW origin
  * (respecting ?da-preview= / localStorage overrides) and swaps to .page hosts
  * when running on da.page.
  * @param {string} org - Organization name
@@ -85,7 +85,7 @@ export function getLivePreviewUrl(org, repo, ref = 'main') {
 
 /**
  * Sets the live-preview session cookie by exchanging the IMS token via
- * /gimme_cookie. Enables loading auth-gated content from preview.da.live.
+ * /gimme_cookie. Enables loading auth-gated content from DA preview.
  * @param {string} org - Organization name
  * @param {string} repo - Repository name
  * @param {string} [ref] - Branch/ref (defaults to 'main')

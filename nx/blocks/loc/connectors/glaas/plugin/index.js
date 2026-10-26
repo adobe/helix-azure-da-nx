@@ -61,7 +61,7 @@ export function buildImageRows(html) {
     const href = toHref(src) ?? src;
     if (seen.has(href)) return;
     seen.add(href);
-    // Display-only: an aem.page thumbnail src needs the preview.da.live cookie to render
+    // Display-only: an aem.page thumbnail src needs the DA preview cookie to render
     // as an <img>. The row's own `src` (used for marking/writing) is never touched.
     const previewHost = parseAemPageHost(href);
     rows.push({
@@ -99,8 +99,8 @@ function gimmeCookie({ org, repo, ref }, token) {
   return thumbnailLogins.get(key);
 }
 
-// Logs into preview.da.live for every distinct aem.page host among rows, so their
-// thumbnails (rewritten to preview.da.live) don't 401 once rendered.
+// Logs into DA preview for every distinct aem.page host among rows, so their
+// thumbnails (rewritten to DA preview) don't 401 once rendered.
 export function ensureThumbnailLogins(rows, token) {
   const hosts = new Map();
   rows.forEach((row) => {

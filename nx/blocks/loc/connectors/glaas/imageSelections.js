@@ -64,7 +64,7 @@ export function parseAemPageHost(href) {
   }
 }
 
-/** aem.page -> same path on preview.da.live (Helix-auth-gated). Fetch-only, never persisted. */
+/** aem.page -> same path on DA preview (Helix-auth-gated). Fetch-only, never persisted. */
 export function aemPageToPreviewDaLiveUrl(imageUrl, { ref, repo, org }) {
   const url = new URL(imageUrl);
   return `${getLivePreviewUrl(org, repo, ref)}${url.pathname}${url.search}`;

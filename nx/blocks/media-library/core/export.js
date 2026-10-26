@@ -3,6 +3,7 @@ import { getMediaType, getSubtype } from './media.js';
 import { decodeDisplayName, getFileName } from './files.js';
 import { getMessage } from './messages.js';
 import { isMediaLibraryPluginMode, withTimeout } from './utils.js';
+import { Domains } from './constants.js';
 
 function escapeCsvCell(value) {
   if (value == null) return '';
@@ -124,7 +125,8 @@ async function copyImageToClipboard(imageUrl, org, repo, usePreviewDaLive = fals
     if (url.origin !== window.location.origin) {
       // Check actual hostname, not just parameter - defense against sending credentials
       // to external images when usePreviewDaLive=true (resolveMediaUrl may not convert them)
-      const isPreviewDaLive = url.hostname.endsWith('.preview.da.live');
+      const isPreviewDaLive = url.hostname.endsWith(Domains.PREVIEW_DA_LIVE)
+        || url.hostname.endsWith('.preview.da.live');
       if (isPreviewDaLive) {
         response = await fetch(fetchUrl, { credentials: 'include' });
       } else {

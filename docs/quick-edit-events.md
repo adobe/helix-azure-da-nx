@@ -18,7 +18,7 @@ by one of two different hosts, depending on how it's loaded:
 
 - **Standalone** (no `?controller=parent`): on `aem.page`, `quick-edit.js` first uses
   `quick-edit-portal.js` to mint the authenticated preview cookie, then embeds the
-  `preview.da.live` page with `?controller=parent`. The top-level page relays the
+  `da-preview.az-boxa.aem.live` page with `?controller=parent`. The top-level page relays the
   unchanged quick-edit protocol between that preview and the portal, which owns the
   ProseMirror/Yjs doc and plays the host role.
 - **da-live-embedded** (`?controller=parent`): `quick-edit.js` skips the nested iframe

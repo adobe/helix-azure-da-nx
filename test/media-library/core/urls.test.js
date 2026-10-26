@@ -5,9 +5,40 @@ import {
   isDeliveryStandaloneUrl,
   folderPathFromAssetUrl,
   canonicalizeMediaUrl,
+  convertToPreviewDaLive,
+  convertToAemPage,
+  getLivePreviewUrl,
 } from '../../../nx/blocks/media-library/core/urls.js';
 
 describe('urls', () => {
+  describe('DA preview URLs', () => {
+    const previewOrigin = 'https://main--blog--adobe.da-preview.az-boxa.aem.live';
+    const pageOrigin = 'https://main--blog--adobe.aem.page';
+    const path = '/media/image.png?width=200#detail';
+
+    it('uses the production DA preview suffix', () => {
+      expect(getLivePreviewUrl('adobe', 'blog')).to.equal(previewOrigin);
+    });
+
+    it('converts to and from DA preview without changing the path, query, or hash', () => {
+      expect(convertToPreviewDaLive(`${pageOrigin}${path}`)).to.equal(`${previewOrigin}${path}`);
+      expect(convertToAemPage(`${previewOrigin}${path}`)).to.equal(`${pageOrigin}${path}`);
+    });
+
+    it('still converts legacy preview URLs to aem.page', () => {
+      expect(convertToAemPage(`https://main--blog--adobe.preview.da.live${path}`))
+        .to.equal(`${pageOrigin}${path}`);
+    });
+
+    it('recognizes and canonicalizes this site preview URLs', () => {
+      expect(isInternalToSite(`${previewOrigin}${path}`, 'adobe', 'blog')).to.be.true;
+      expect(canonicalizeMediaUrl(`${previewOrigin}${path}`, 'adobe', 'blog'))
+        .to.equal(`${pageOrigin}${path}`);
+      expect(isInternalToSite(`${previewOrigin}${path}`, 'adobe', 'other')).to.be.false;
+      expect(isInternalToSite(`${previewOrigin}.evil.example${path}`, 'adobe', 'blog')).to.be.false;
+    });
+  });
+
   describe('isInternalToSite', () => {
     const org = 'adobe';
     const repo = 'blog';
