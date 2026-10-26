@@ -35,7 +35,7 @@ export { AEM_API };
 //
 // Low-level:
 //   daFetch    authenticated fetch (used by everything above)
-//   isHlx6     Helix 6 upgrade-status probe (cached)
+//   isHlx6     Azure site backend selection (no upgrade probe)
 //   fromPath   `/org/site/file/path` -> { org, site, path }
 //
 // All namespace methods return a raw `Response` (augmented with
@@ -595,7 +595,7 @@ export const asJson = (promise) => unwrap(promise, 'json');
 export const asText = (promise) => unwrap(promise, 'text');
 
 // ============================================================================
-// Low-level fetch + upgrade probe
+// Low-level fetch + backend selection
 // ============================================================================
 
 export const daFetch = async ({ url, opts = { method: 'GET' }, redirect = false }) => {
@@ -645,30 +645,7 @@ export const daFetch = async ({ url, opts = { method: 'GET' }, redirect = false 
   return resp;
 };
 
-export const isHlx6 = (() => {
-  const cache = {};
-
-  const fetchUpgradeStatus = async (path) => {
-    const lsCache = JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {};
-    if (lsCache[path]) return true;
-
-    const resp = await daFetch({ url: `${HLX_ADMIN}/ping${path}` });
-    const upgraded = resp.headers.get('x-api-upgrade-available') !== null;
-    if (upgraded) {
-      lsCache[path] = true;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(lsCache));
-    }
-    return upgraded;
-  };
-
-  return (org, site) => {
-    if (!site) return false;
-    return true;
-    // const path = `/${org}/${site}`;
-    // cache[path] ??= fetchUpgradeStatus(path);
-    // return cache[path];
-  };
-})();
+export const isHlx6 = (_, site) => !!site;
 
 // Convert a `/org/site/file/path` string into `{ org, site, path }`.
 export function fromPath(str) {
@@ -708,7 +685,6 @@ const LIST = 'list';
 const CONFIG = 'config';
 const VERSIONS = 'versions';
 const REF = 'main';
-const STORAGE_KEY = 'hlx6-upgrade';
 const HLX6_ONLY = { error: 'Requires Helix 6 upgrade', status: 501 };
 
 const TYPE_MAP = {

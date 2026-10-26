@@ -70,17 +70,16 @@ describe('fetchDaConfigs', () => {
     expect(orgConfig.flags.data).to.deep.equal([{ key: 'ew.enabled', value: 'true' }]);
   });
 
-  it('legacy: fetches both org and site config, site resolves as the last entry', async () => {
+  it('fetches DA org config and Azure site config, with site last', async () => {
     const org = uniq('org');
     const site = uniq('site');
-    restoreFetch();
-    calls.length = 0;
+    installFetch();
     window.fetch = async (url) => {
       const u = url.toString();
       calls.push({ url: u, method: 'GET' });
       if (u.includes(`${HLX_ADMIN}/ping/`)) return new Response('', { status: 200 });
-      if (u.includes(`/${org}/${site}/`)) {
-        return new Response(JSON.stringify({ flags: { data: [{ key: 'site' }] } }), { status: 200 });
+      if (u === `${AEM_API}/${org}/sites/${site}/config/editor/da.json`) {
+        return new Response(JSON.stringify({ flags: [{ key: 'site' }] }), { status: 200 });
       }
       return new Response(JSON.stringify({ flags: { data: [{ key: 'org' }] } }), { status: 200 });
     };
@@ -90,13 +89,13 @@ describe('fetchDaConfigs', () => {
     const [orgConfig, siteConfig] = await Promise.all(configs);
 
     expect(orgConfig.flags.data).to.deep.equal([{ key: 'org' }]);
-    expect(siteConfig.flags.data).to.deep.equal([{ key: 'site' }]);
+    expect(getFirstSheet(siteConfig)).to.deep.equal([{ key: 'site' }]);
   });
 
   it('memoizes: a second call with the same org/site does not re-fetch', async () => {
     const org = uniq('org');
     const site = uniq('site');
-    installFetch({ body: JSON.stringify({ flags: { data: [] } }) });
+    installFetch({ body: JSON.stringify({ flags: [] }) });
 
     await Promise.all(fetchDaConfigs({ org, site }));
     const callsAfterFirst = calls.length;
@@ -189,8 +188,9 @@ describe('getConfigValue', () => {
     window.fetch = async (url) => {
       const u = url.toString();
       if (u.includes(`${HLX_ADMIN}/ping/`)) return new Response('', { status: 200 });
-      const value = u.includes(`/${org}/${site}/`) ? 'site' : 'org';
-      return new Response(sheet([{ key: 'a', value }]), { status: 200 });
+      const isSite = u === `${AEM_API}/${org}/sites/${site}/config/editor/da.json`;
+      const rows = [{ key: 'a', value: isSite ? 'site' : 'org' }];
+      return new Response(isSite ? JSON.stringify({ config: rows }) : sheet(rows), { status: 200 });
     };
 
     expect(await getConfigValue({ org, site, key: 'a' })).to.equal('site');
@@ -203,8 +203,9 @@ describe('getConfigValue', () => {
     window.fetch = async (url) => {
       const u = url.toString();
       if (u.includes(`${HLX_ADMIN}/ping/`)) return new Response('', { status: 200 });
-      const data = u.includes(`/${org}/${site}/`) ? [] : [{ key: 'a', value: 'org' }];
-      return new Response(sheet(data), { status: 200 });
+      const isSite = u === `${AEM_API}/${org}/sites/${site}/config/editor/da.json`;
+      const data = isSite ? [] : [{ key: 'a', value: 'org' }];
+      return new Response(isSite ? JSON.stringify({ config: data }) : sheet(data), { status: 200 });
     };
 
     expect(await getConfigValue({ org, site, key: 'a' })).to.equal('org');

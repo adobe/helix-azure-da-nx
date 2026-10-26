@@ -32,13 +32,6 @@ function restoreFetch() {
   origFetch = null;
 }
 
-async function bodyToText(body) {
-  // FormData in the test browser exposes entries(); the config file is
-  // appended under the 'data' key as a Blob.
-  const blob = body.get('data');
-  return blob.text();
-}
-
 describe('lionbridge connectorGuid', () => {
   afterEach(() => restoreFetch());
 
@@ -92,7 +85,7 @@ describe('lionbridge connectorGuid', () => {
     const saveCall = calls.find((c) => c.method === 'POST');
     expect(saveCall, 'save call').to.exist;
 
-    const savedJson = JSON.parse(await bodyToText(saveCall.body));
+    const savedJson = JSON.parse(saveCall.body);
     const savedRow = savedJson.config.data.find((row) => row.key === 'translation.service.prod.connectorGuid');
     expect(savedRow.value).to.equal(guid);
   });

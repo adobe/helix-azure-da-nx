@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { DA_ADMIN } from '../../../nx2/utils/utils.js';
+import { AEM_API } from '../../../nx2/utils/utils.js';
 import {
   blobContentTypeForDaSource,
   buildTranslatedImageSourcePath,
@@ -39,7 +39,7 @@ describe('GLaaS multimodal save', () => {
   });
 
   describe('DA source save path', () => {
-    it('saveTranslatedImageToDaSource saves to /source/{org}/{site}/translated-images/{lang}{site-relative path}', async () => {
+    it('saveTranslatedImageToDaSource saves to the Azure source bus under /translated-images/{lang}{site-relative path}', async () => {
       const fetchStub = sinon.stub(window, 'fetch').resolves(new Response('', { status: 200 }));
       const blob = new Blob(['x'], { type: 'image/png' });
       const org = 'adobecom';
@@ -60,11 +60,12 @@ describe('GLaaS multimodal save', () => {
       expect(result.url).to.equal(`https://content.da.live/${org}/${site}${expectedPath}`);
       const saveCall = fetchStub.getCalls().find((call) => String(call.args[0]).includes('/source/'));
       expect(saveCall).to.exist;
-      expect(saveCall.args[0]).to.equal(`${DA_ADMIN}/source/${org}/${site}${expectedPath}`);
-      expect(saveCall.args[0]).to.equal(`${DA_ADMIN}/source/adobecom/da-dc/translated-images/de/acrobat/shared/hero.png`);
+      expect(saveCall.args[0]).to.equal(`${AEM_API}/${org}/sites/${site}/source${expectedPath}`);
+      expect(saveCall.args[0]).to.equal(`${AEM_API}/adobecom/sites/da-dc/source/translated-images/de/acrobat/shared/hero.png`);
       expect(saveCall.args[0]).not.to.include('/translated-images/de/adobecom/da-dc/');
       expect(saveCall.args[1].method).to.equal('POST');
-      expect(saveCall.args[1].body).to.be.instanceOf(FormData);
+      expect(saveCall.args[1].body).to.equal(blob);
+      expect(saveCall.args[1].headers['Content-Type']).to.equal('image/png');
     });
 
     it('saveTranslatedImageToDaSource supports nested paths and locale codes with hyphens', async () => {
@@ -78,7 +79,7 @@ describe('GLaaS multimodal save', () => {
         contentType: 'image/png',
       });
       const saveCall = fetchStub.getCalls().find((call) => String(call.args[0]).includes('/source/'));
-      expect(saveCall.args[0]).to.equal(`${DA_ADMIN}/source/adobecom/da-dc/translated-images/fr-CA/acrobat/online/test/report.png`);
+      expect(saveCall.args[0]).to.equal(`${AEM_API}/adobecom/sites/da-dc/source/translated-images/fr-CA/acrobat/online/test/report.png`);
     });
 
     it('saveTranslatedImageToDaSource skips images above the DA source size limit without saving', async () => {
@@ -214,7 +215,7 @@ describe('GLaaS multimodal save', () => {
     const contentDaLiveUrl = `https://content.da.live/${org}/${site}/acrobat/shared/hero.png`;
     const translatedHtml = `<img src="${contentDaLiveUrl}">`;
     const expectedSourcePath = buildTranslatedImageSourcePath({ langCode: 'de', glaasName: imageGlaasName });
-    const expectedSourceSave = `${DA_ADMIN}/source/${org}/${site}${expectedSourcePath}`;
+    const expectedSourceSave = `${AEM_API}/${org}/sites/${site}/source${expectedSourcePath}`;
     const expectedDeliveryUrl = `https://content.da.live/${org}/${site}${expectedSourcePath}`;
 
     const fetchStub = sinon.stub(window, 'fetch').callsFake((url) => {

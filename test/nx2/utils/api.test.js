@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import {
-  HLX_ADMIN, AEM_API, DA_ADMIN, DA_CONTENT,
+  HLX_ADMIN, AEM_API, DA_ADMIN,
 } from '../../../nx2/utils/utils.js';
 import {
   calls, installFetch, restoreFetch, lastCall, callsTo,
@@ -60,12 +60,12 @@ describe('api.js', () => {
 
   describe('daFetch', () => {
     it('attaches Authorization for ALLOWED_TOKEN origins', async () => {
-      await daFetch({ url: `${HLX_ADMIN}/ping/x/y` });
+      await daFetch({ url: `${DA_ADMIN}/source/x/y` });
       expect(lastCall().headers.Authorization).to.equal('Bearer test-token');
     });
 
-    it('also attaches x-content-source-authorization for HLX_ADMIN and AEM_API', async () => {
-      await daFetch({ url: `${HLX_ADMIN}/ping/x/y` });
+    it('also attaches x-content-source-authorization for AEM_API', async () => {
+      await daFetch({ url: `${AEM_API}/source/x/y` });
       expect(lastCall().headers['x-content-source-authorization']).to.equal('Bearer test-token');
 
       await daFetch({ url: `${AEM_API}/some/path` });
@@ -135,8 +135,8 @@ describe('api.js', () => {
       expect(resp).to.deep.equal({});
     });
 
-    it('sets referrerPolicy to unsafe-url for HLX_ADMIN and AEM_API', async () => {
-      await daFetch({ url: `${HLX_ADMIN}/ping/x/y` });
+    it('sets referrerPolicy to unsafe-url for AEM_API', async () => {
+      await daFetch({ url: `${AEM_API}/source/x/y` });
       expect(lastCall().referrerPolicy).to.equal('unsafe-url');
 
       await daFetch({ url: `${AEM_API}/some/path` });
@@ -158,34 +158,30 @@ describe('api.js', () => {
       expect(result).to.equal(false);
     });
 
-    it('returns true when ping responds with x-api-upgrade-available', async () => {
-      restoreFetch();
-      installFetch({ pingHlx6: true });
+    it('uses Helix 6 without probing or persisting upgrade status', async () => {
       const o = uniq('org');
       const s = uniq('site');
       const result = await isHlx6(o, s);
       expect(result).to.equal(true);
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      expect(stored[`/${o}/${s}`]).to.equal(true);
+      expect(calls).to.have.lengthOf(0);
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {};
+      expect(stored[`/${o}/${s}`]).to.be.undefined;
     });
 
     it('uses localStorage cache without fetching', async () => {
       const { org: o, site: s } = makeOrgSite({ hlx6: true });
       const result = await isHlx6(o, s);
       expect(result).to.equal(true);
-      // No ping call made (in-memory call may or may not occur but no /ping/ url)
-      const pingCalls = calls.filter((c) => c.url.includes(`${HLX_ADMIN}/ping/`));
-      expect(pingCalls).to.have.lengthOf(0);
+      expect(calls).to.have.lengthOf(0);
     });
   });
 
   describe('source', () => {
-    it('source.get hits DA on legacy', async () => {
+    it('source.get uses Azure without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
-      // Trigger a ping fetch by querying — it returns no upgrade header → legacy
       await source.get({ org: o, site: s, path: '/index.html' });
       const last = lastCall();
-      expect(last.url).to.equal(`${DA_ADMIN}/source/${o}/${s}/index.html`);
+      expect(last.url).to.equal(`${AEM_API}/${o}/sites/${s}/source/index.html`);
       expect(last.method).to.equal('GET');
     });
 
@@ -195,10 +191,10 @@ describe('api.js', () => {
       expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/source/index.html`);
     });
 
-    it('source.list uses /list on legacy', async () => {
+    it('source.list uses Azure without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       await source.list({ org: o, site: s, path: '/folder' });
-      expect(lastCall().url).to.equal(`${DA_ADMIN}/list/${o}/${s}/folder`);
+      expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/source/folder/`);
     });
 
     it('source.list uses source URL with trailing slash on hlx6', async () => {
@@ -336,7 +332,7 @@ describe('api.js', () => {
       const requestToken = 'tok-1';
       await source.list(fullPath, { continuationToken: requestToken });
       expect(lastCall().headers['da-continuation-token']).to.equal(requestToken);
-      expect(lastCall().url).to.equal(`${DA_ADMIN}/list/${o}/${s}/folder`);
+      expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/source/folder/`);
     });
 
     it('source.list returns { ok, items, continuationToken, permissions } with legacy items normalized', async () => {
@@ -361,9 +357,6 @@ describe('api.js', () => {
     it('source.list normalizes hlx6 items via hlx6ToDaList using the parent path', async () => {
       restoreFetch();
       installFetch({
-        // Make every non-ping fetch (including the source listing) return this body.
-        // The hlx6 ping response (empty body, no upgrade header) keeps isHlx6 false…
-        // so to exercise the hlx6 branch we use a pre-cached site.
         body: JSON.stringify([
           { name: 'demo.json', size: 1, 'content-type': 'application/json', 'last-modified': '2026-05-03T19:05:03.000Z' },
           { name: 'sub/', 'content-type': 'application/folder' },
@@ -428,16 +421,15 @@ describe('api.js', () => {
       expect(result.continuationToken).to.equal(null);
     });
 
-    it('source.save DA wraps data in FormData', async () => {
+    it('source.save preserves the Blob without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       const data = new Blob(['<html></html>'], { type: 'text/html' });
       await source.save({ org: o, site: s, path: '/page.html', body: data });
       const last = lastCall();
       expect(last.method).to.equal('POST');
-      expect(last.body).to.be.instanceof(FormData);
-      const stored = last.body.get('data');
-      expect(stored).to.be.instanceof(Blob);
-      expect(stored.size).to.equal(data.size);
+      expect(last.url).to.equal(`${AEM_API}/${o}/sites/${s}/source/page.html`);
+      expect(last.body).to.equal(data);
+      expect(last.headers['Content-Type']).to.equal('text/html');
     });
 
     it('source.save hlx6 sets Content-Type for known text exts', async () => {
@@ -531,21 +523,19 @@ describe('api.js', () => {
       expect(resp.status).to.equal(403);
     });
 
-    it('source.uploadMedia legacy delegates to _saveDA as FormData with no double-fetch', async () => {
+    it('source.uploadMedia uses the media route without a cached upgrade flag', async () => {
       restoreFetch();
       installFetch({
-        body: JSON.stringify({ source: { contentUrl: 'https://stage-content.da.live/o/s/img.png' } }),
+        body: JSON.stringify({ uri: 'https://cdn.example.com/img.png', meta: {} }),
       });
       const { org: o, site: s } = makeOrgSite();
       const data = new Blob(['binary'], { type: 'image/png' });
       await source.uploadMedia({ org: o, site: s, path: '/img.png', body: data });
       const last = lastCall();
       expect(last.method).to.equal('POST');
-      expect(last.body).to.be.instanceof(FormData);
-      const stored = last.body.get('data');
-      expect(stored).to.be.instanceof(Blob);
-      expect(stored.size).to.equal(data.size);
-      expect(calls.some((c) => c.url.includes('/media'))).to.equal(false);
+      expect(last.url).to.equal(`${AEM_API}/${o}/sites/${s}/media/img.png`);
+      expect(last.body).to.equal(data);
+      expect(calls).to.have.lengthOf(1);
     });
 
     it('source.uploadMedia hlx6 POSTs to the media route with content-type header and raw body', async () => {
@@ -663,15 +653,16 @@ describe('api.js', () => {
       expect(u.searchParams.get('move')).to.be.null;
     });
 
-    it('source.copy legacy POSTs to /copy/{org}/{site}{path} with destination form field', async () => {
+    it('source.copy uses Azure without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       const destination = `/${o}/${s}/dest.html`;
       await source.copy({ org: o, site: s, path: '/src.html', destination });
       const last = lastCall();
-      expect(last.url).to.equal(`${DA_ADMIN}/copy/${o}/${s}/src.html`);
-      expect(last.method).to.equal('POST');
-      expect(last.body).to.be.instanceof(FormData);
-      expect(last.body.get('destination')).to.equal(destination);
+      const url = new URL(last.url);
+      expect(url.origin).to.equal(AEM_API);
+      expect(url.pathname).to.equal(`/${o}/sites/${s}/source/dest.html`);
+      expect(url.searchParams.get('source')).to.equal('/src.html');
+      expect(last.method).to.equal('PUT');
     });
 
     it('source.move hlx6 emulates move via copy then delete of the original', async () => {
@@ -704,24 +695,24 @@ describe('api.js', () => {
       expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
     });
 
-    it('source.move legacy POSTs to /move/{org}/{site}{path} with destination form field', async () => {
+    it('source.move copies then deletes without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
-      await source.move({ org: o, site: s, path: '/src.html', destination: '/dest.html' });
+      await source.move({ org: o, site: s, path: '/src.html', destination: `/${o}/${s}/dest.html` });
       const last = lastCall();
-      expect(last.url).to.equal(`${DA_ADMIN}/move/${o}/${s}/src.html`);
-      expect(last.method).to.equal('POST');
-      expect(last.body.get('destination')).to.equal('/dest.html');
+      expect(calls[0].method).to.equal('PUT');
+      expect(new URL(calls[0].url).pathname).to.equal(`/${o}/sites/${s}/source/dest.html`);
+      expect(last.url).to.equal(`${AEM_API}/${o}/sites/${s}/source/src.html`);
+      expect(last.method).to.equal('DELETE');
     });
 
-    it('source.copy cross-backend (DA source -> hlx6 dest) streams asset bytes to the source bus', async () => {
+    it('source.copy streams asset bytes from an uncached site to the destination source bus', async () => {
       const { org: so, site: ss } = makeOrgSite();
       const { org: dorg, site: dsite } = makeOrgSite({ hlx6: true });
       const resp = await source.copy({
         org: so, site: ss, path: '/asset.pdf', destination: `/${dorg}/${dsite}/asset.pdf`,
       });
-      // read the bytes from the legacy DA source
       expect(calls.some((c) => c.method === 'GET'
-        && c.url === `${DA_ADMIN}/source/${so}/${ss}/asset.pdf`)).to.be.true;
+        && c.url === `${AEM_API}/${so}/sites/${ss}/source/asset.pdf`)).to.be.true;
       // write them to the hlx6 destination's source bus (not the media store)
       expect(calls.some((c) => c.method === 'POST'
         && c.url === `${AEM_API}/${dorg}/sites/${dsite}/source/asset.pdf`)).to.be.true;
@@ -729,7 +720,7 @@ describe('api.js', () => {
       expect(resp.ok).to.be.true;
     });
 
-    it('source.copy cross-backend (hlx6 source -> DA dest) streams doc bytes via save', async () => {
+    it('source.copy streams doc bytes to an uncached Azure destination', async () => {
       const { org: so, site: ss } = makeOrgSite({ hlx6: true });
       const { org: dorg, site: dsite } = makeOrgSite();
       const resp = await source.copy({
@@ -738,11 +729,10 @@ describe('api.js', () => {
       // read the bytes from the hlx6 source bus
       expect(calls.some((c) => c.method === 'GET'
         && c.url === `${AEM_API}/${so}/sites/${ss}/source/page.html`)).to.be.true;
-      // write the doc to the legacy DA source as multipart form data
       const saveCall = calls.find((c) => c.method === 'POST'
-        && c.url === `${DA_ADMIN}/source/${dorg}/${dsite}/page.html`);
+        && c.url === `${AEM_API}/${dorg}/sites/${dsite}/source/page.html`);
       expect(saveCall).to.exist;
-      expect(saveCall.body).to.be.instanceof(FormData);
+      expect(saveCall.body).to.be.a('string');
       expect(resp.ok).to.be.true;
     });
 
@@ -776,7 +766,7 @@ describe('api.js', () => {
       expect(resp.ok).to.be.true;
     });
 
-    it('source.copy cross-site rewrites relative media_ refs to source-absolute URLs (DA source)', async () => {
+    it('source.copy cross-site rewrites relative media_ refs without a cached upgrade flag', async () => {
       const { org: so, site: ss } = makeOrgSite();
       const { org: dorg, site: dsite } = makeOrgSite({ hlx6: true });
       restoreFetch();
@@ -789,8 +779,7 @@ describe('api.js', () => {
       const saveCall = calls.find((c) => c.method === 'POST'
         && c.url === `${AEM_API}/${dorg}/sites/${dsite}/source/folder/page.html`);
       expect(saveCall).to.exist;
-      // relative media_ ref absolutized against the DA source content origin
-      expect(saveCall.body).to.include(`src="${DA_CONTENT}/${so}/${ss}/folder/media_abc.png"`);
+      expect(saveCall.body).to.include(`src="https://main--${ss}--${so}.aem.page/folder/media_abc.png"`);
       // already-absolute media and ordinary relative links are left untouched
       expect(saveCall.body).to.include('src="https://cdn.example.com/media_zzz.png"');
       expect(saveCall.body).to.include('href="./other"');
@@ -808,7 +797,7 @@ describe('api.js', () => {
       });
       const saveCall = calls.find((c) => c.method === 'POST'
         && c.url === `${AEM_API}/${dorg}/sites/${dsite}/source/folder/page.html`);
-      expect(saveCall.body).to.include(`srcset="${DA_CONTENT}/${so}/${ss}/folder/media_abc.png?width=750&format=webply"`);
+      expect(saveCall.body).to.include(`srcset="https://main--${ss}--${so}.aem.page/folder/media_abc.png?width=750&format=webply"`);
       // sizing attributes on the source element are untouched
       expect(saveCall.body).to.include('media="(min-width: 600px)"');
     });
@@ -826,7 +815,7 @@ describe('api.js', () => {
       expect(saveCall.body).to.include(`src="https://main--${ss}--${so}.aem.page/folder/media_abc.png"`);
     });
 
-    it('source.copy cross-backend returns the source response and writes nothing when the read fails', async () => {
+    it('source.copy cross-site returns the source response and writes nothing when the read fails', async () => {
       const { org: so, site: ss } = makeOrgSite();
       const { org: dorg, site: dsite } = makeOrgSite({ hlx6: true });
       restoreFetch();
@@ -840,7 +829,7 @@ describe('api.js', () => {
       expect(calls.some((c) => c.method === 'POST')).to.be.false;
     });
 
-    it('source.move cross-backend (DA source -> hlx6 dest) copies then deletes the original', async () => {
+    it('source.move cross-site copies then deletes an uncached source', async () => {
       const { org: so, site: ss } = makeOrgSite();
       const { org: dorg, site: dsite } = makeOrgSite({ hlx6: true });
       await source.move({
@@ -849,12 +838,11 @@ describe('api.js', () => {
       // wrote to the hlx6 destination's source bus
       expect(calls.some((c) => c.method === 'POST'
         && c.url === `${AEM_API}/${dorg}/sites/${dsite}/source/asset.pdf`)).to.be.true;
-      // deleted the original from the legacy DA source
       const del = calls.find((c) => c.method === 'DELETE');
-      expect(del.url).to.equal(`${DA_ADMIN}/source/${so}/${ss}/asset.pdf`);
+      expect(del.url).to.equal(`${AEM_API}/${so}/sites/${ss}/source/asset.pdf`);
     });
 
-    it('source.move cross-backend leaves the original in place when the copy fails', async () => {
+    it('source.move cross-site leaves the original in place when the copy fails', async () => {
       const { org: so, site: ss } = makeOrgSite();
       const { org: dorg, site: dsite } = makeOrgSite({ hlx6: true });
       restoreFetch();
@@ -933,14 +921,14 @@ describe('api.js', () => {
       expect(u.searchParams.get('collision')).to.equal('overwrite');
     });
 
-    it('source.copyFolder legacy POSTs to /copy/{org}/{site}{path} with destination form field (no trailing slash)', async () => {
+    it('source.copyFolder uses Azure without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       await source.copyFolder({ org: o, site: s, path: '/src', destination: '/dest' });
       const last = lastCall();
-      expect(last.url).to.equal(`${DA_ADMIN}/copy/${o}/${s}/src`);
-      expect(last.method).to.equal('POST');
-      expect(last.body).to.be.instanceof(FormData);
-      expect(last.body.get('destination')).to.equal('/dest');
+      const url = new URL(last.url);
+      expect(url.pathname).to.equal(`/${o}/sites/${s}/source/dest/`);
+      expect(url.searchParams.get('source')).to.equal('/src/');
+      expect(last.method).to.equal('PUT');
     });
 
     it('source.copyFolder normalizes paths that already have a trailing slash', async () => {
@@ -961,10 +949,10 @@ describe('api.js', () => {
   });
 
   describe('versions', () => {
-    it('versions.list legacy hits /versionlist', async () => {
+    it('versions.list uses Azure without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       await versions.list({ org: o, site: s, path: '/x.html' });
-      expect(lastCall().url).to.equal(`${DA_ADMIN}/versionlist/${o}/${s}/x.html`);
+      expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/source/x.html/.versions`);
     });
 
     it('versions.list hlx6 hits .versions sub-resource', async () => {
@@ -991,10 +979,10 @@ describe('api.js', () => {
       expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/source/x.html/.versions/abc`);
     });
 
-    it('versions.get legacy hits /versionsource/{org}/{versionId}', async () => {
+    it('versions.get uses Azure without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       await versions.get({ org: o, site: s, path: '/x.html', versionId: 'guid1/guid2.html' });
-      expect(lastCall().url).to.equal(`${DA_ADMIN}/versionsource/${o}/${s}/guid1/guid2.html`);
+      expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/source/x.html/.versions/guid1/guid2.html`);
     });
 
     it('versions.create hlx6 POSTs operation/comment as query params with no body', async () => {
@@ -1009,12 +997,13 @@ describe('api.js', () => {
       expect(last.body).to.be.undefined;
     });
 
-    it('versions.create legacy POSTs comment as { label } JSON body', async () => {
+    it('versions.create sends comment as a query parameter without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       await versions.create({ org: o, site: s, path: '/x.html', comment: 'My Label' });
       const last = lastCall();
       expect(last.method).to.equal('POST');
-      expect(last.body).to.equal('{"label":"My Label"}');
+      expect(new URL(last.url).searchParams.get('comment')).to.equal('My Label');
+      expect(last.body).to.be.undefined;
     });
 
     it('versions.create with no comment sends no body', async () => {
@@ -1039,13 +1028,14 @@ describe('api.js', () => {
       expect(lastCall().url).to.equal(`${DA_ADMIN}/config/${o}/`);
     });
 
-    it('config.save uses FormData with config field', async () => {
+    it('config.save uses JSON without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       await config.save({ org: o, site: s, body: '{"foo":"bar"}' });
       const last = lastCall();
-      expect(last.method).to.equal('PUT');
-      expect(last.body).to.be.instanceof(FormData);
-      expect(last.body.get('config')).to.equal('{"foo":"bar"}');
+      expect(last.url).to.equal(`${AEM_API}/${o}/sites/${s}/config/editor/da.json`);
+      expect(last.method).to.equal('POST');
+      expect(last.body).to.equal('{"foo":"bar"}');
+      expect(last.headers['content-type']).to.equal('application/json');
     });
 
     it('config.get on hlx6 converts the simple AEM_API response into sheet format', async () => {
@@ -1128,8 +1118,7 @@ describe('api.js', () => {
     });
 
     it('config.getAggregated is hlx6-only', async () => {
-      const legacy = makeOrgSite();
-      const r = await config.getAggregated({ org: legacy.org, site: legacy.site });
+      const r = await config.getAggregated({ org: uniq('org') });
       expect(r.status).to.equal(501);
 
       const up = makeOrgSite({ hlx6: true });
@@ -1161,10 +1150,10 @@ describe('api.js', () => {
       expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/status/page.html`);
     });
 
-    it('legacy uses HLX_ADMIN with main ref', async () => {
+    it('uses Azure without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       await status.get({ org: o, site: s, path: '/page.html' });
-      expect(lastCall().url).to.equal(`${HLX_ADMIN}/status/${o}/${s}/main/page.html`);
+      expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/status/page.html`);
     });
   });
 
@@ -1289,10 +1278,10 @@ describe('api.js', () => {
       expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/snapshots`);
     });
 
-    it('snapshot.list hits singular /snapshot on legacy', async () => {
+    it('snapshot.list uses Azure without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       await snapshot.list({ org: o, site: s });
-      expect(lastCall().url).to.equal(`${HLX_ADMIN}/snapshot/${o}/${s}/main`);
+      expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/snapshots`);
     });
 
     it('snapshot.get retrieves manifest', async () => {
@@ -1367,10 +1356,10 @@ describe('api.js', () => {
       expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/jobs/preview`);
     });
 
-    it('jobs.get legacy uses singular /job', async () => {
+    it('jobs.get uses Azure without a cached upgrade flag', async () => {
       const { org: o, site: s } = makeOrgSite();
       await jobs.get({ org: o, site: s, topic: 'preview', name: 'job-123' });
-      expect(lastCall().url).to.equal(`${HLX_ADMIN}/job/${o}/${s}/main/preview/job-123`);
+      expect(lastCall().url).to.equal(`${AEM_API}/${o}/sites/${s}/jobs/preview/job-123`);
     });
 
     it('jobs.details GETs /details', async () => {

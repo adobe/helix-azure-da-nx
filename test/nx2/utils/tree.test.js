@@ -14,8 +14,7 @@ const ORG = 'testorg';
 const SITE = 'testsite';
 const BASE = `/${ORG}/${SITE}`;
 
-// HLX6 tests use a distinct org/site so the isHlx6 in-memory cache
-// (module-level, never cleared between tests) does not bleed across.
+// Use a distinct site for native Helix 6 listing fixtures.
 const HLX6_ORG = 'hlx6org';
 const HLX6_SITE = 'hlx6site';
 const HLX6_BASE = `/${HLX6_ORG}/${HLX6_SITE}`;
@@ -27,8 +26,6 @@ const HLX6_BASE = `/${HLX6_ORG}/${HLX6_SITE}`;
 let origFetch;
 let calls;
 
-// Install a window.fetch mock. HLX_ADMIN ping (isHlx6 probe) is answered by
-// `pingHlx6`. All other requests are dispatched to `handler(url, opts)`.
 function installFetch(handler, { pingHlx6 = false } = {}) {
   calls = [];
   origFetch = window.fetch;
@@ -153,7 +150,7 @@ describe('Queue', () => {
 // getChildren (exercised via crawl) — legacy DA (non-HLX6)
 // ---------------------------------------------------------------------------
 
-describe('getChildren via crawl (legacy DA)', () => {
+describe('getChildren via crawl (legacy listing format)', () => {
   beforeEach(() => {
     resetMockIms();
     localStorage.removeItem(STORAGE_KEY);
@@ -220,23 +217,22 @@ describe('getChildren via crawl (legacy DA)', () => {
     const { results } = crawl({ path: `${BASE}/big`, callback: null, concurrent: 10, throttle: 10 });
     const files = await results;
 
-    // fetchCount counts handler calls only (ping is intercepted before handler).
     expect(fetchCount).to.equal(2); // 2 list pages
     expect(files.length).to.equal(2);
     expect(files.some((f) => f.name === 'file1')).to.equal(true);
     expect(files.some((f) => f.name === 'file2')).to.equal(true);
   });
 
-  it('hits DA_ADMIN list endpoint (not AEM_API) for non-HLX6 sites', async () => {
+  it('uses the Azure source endpoint without a cached upgrade flag', async () => {
     installFetch(() => legacyResp(filesOnly));
 
     const { results } = crawl({ path: `${BASE}/docs`, callback: null, concurrent: 10, throttle: 10 });
     await results;
 
     const listCalls = calls.filter((c) => c.url.startsWith(DA_ADMIN));
-    expect(listCalls.length).to.be.greaterThan(0);
+    expect(listCalls.length).to.equal(0);
     const aemCalls = calls.filter((c) => c.url.startsWith(AEM_API));
-    expect(aemCalls.length).to.equal(0);
+    expect(aemCalls.map((c) => c.url)).to.deep.equal([`${AEM_API}/${ORG}/sites/${SITE}/source/docs/`]);
   });
 });
 
@@ -248,8 +244,6 @@ describe('getChildren via crawl (HLX6)', () => {
   beforeEach(() => {
     resetMockIms();
     localStorage.removeItem(STORAGE_KEY);
-    // Pre-seed localStorage so isHlx6(HLX6_ORG, HLX6_SITE) returns true
-    // without firing a ping (the in-memory cache will be populated on first call).
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ [HLX6_BASE]: true }));
   });
 

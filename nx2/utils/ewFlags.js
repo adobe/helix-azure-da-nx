@@ -14,7 +14,8 @@ function loadEWFlags({ org, site }) {
         return { flags: {}, error: config.error, status: config.status };
       }
       const flags = {};
-      for (const { key, value } of config?.flags?.data ?? []) {
+      const rows = config?.[':sheetname'] === 'flags' ? config.data : config?.flags?.data;
+      for (const { key, value } of rows ?? []) {
         if (key.startsWith('ew.')) flags[key] = value;
       }
       return { flags };

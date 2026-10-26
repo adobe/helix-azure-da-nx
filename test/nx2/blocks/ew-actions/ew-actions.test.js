@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { DA_ADMIN } from '../../../../nx2/utils/utils.js';
+import { AEM_API, DA_ADMIN } from '../../../../nx2/utils/utils.js';
 import { versions, aem } from '../../../../nx2/utils/api.js';
 import { VERSION_EVENT } from '../../../../nx2/utils/version-events.js';
 import { BRANCH_EVENT } from '../../../../nx2/utils/branch-events.js';
@@ -24,6 +24,9 @@ function installFetch(responsesByUrlSubstring) {
     if (url.includes('/ping/')) return new Response('', { status: 200 });
     if (url.startsWith(`${DA_ADMIN}/config/`)) {
       return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    }
+    if (url.startsWith(AEM_API) && url.endsWith('/config/editor/da.json')) {
+      return new Response(JSON.stringify({ config: [] }), { status: 200 });
     }
     return origFetch(url, opts);
   };
@@ -507,7 +510,7 @@ describe('nx-ew-actions', () => {
       const site = uniq('site');
       restoreFetch = installFetch({
         [`${DA_ADMIN}/config/${org}/`]: { data: [{ key: 'editor.hidePublish', value: `/${org}/${site}/test` }] },
-        [`${DA_ADMIN}/config/${org}/${site}/`]: { data: [] },
+        [`${AEM_API}/${org}/sites/${site}/config/editor/da.json`]: { config: [] },
       });
 
       el = await makeEl();
@@ -522,7 +525,7 @@ describe('nx-ew-actions', () => {
       const site = uniq('site');
       restoreFetch = installFetch({
         [`${DA_ADMIN}/config/${org}/`]: { data: [{ key: 'editor.hidePublish', value: `/${org}/${site}/other` }] },
-        [`${DA_ADMIN}/config/${org}/${site}/`]: { data: [] },
+        [`${AEM_API}/${org}/sites/${site}/config/editor/da.json`]: { config: [] },
       });
 
       el = await makeEl();
@@ -537,7 +540,7 @@ describe('nx-ew-actions', () => {
       const site = uniq('site');
       restoreFetch = installFetch({
         [`${DA_ADMIN}/config/${org}/`]: { data: [{ key: 'editor.hidePublish', value: `/${org}/${site}/other` }] },
-        [`${DA_ADMIN}/config/${org}/${site}/`]: { data: [{ key: 'editor.hidePublish', value: `/${org}/${site}/test` }] },
+        [`${AEM_API}/${org}/sites/${site}/config/editor/da.json`]: { config: [{ key: 'editor.hidePublish', value: `/${org}/${site}/test` }] },
       });
 
       el = await makeEl();
@@ -557,7 +560,7 @@ describe('nx-ew-actions', () => {
       const site = uniq('site');
       restoreFetch = installFetch({
         [`${DA_ADMIN}/config/${org}/`]: { data: [] },
-        [`${DA_ADMIN}/config/${org}/${site}/`]: { data: [] },
+        [`${AEM_API}/${org}/sites/${site}/config/editor/da.json`]: { config: [] },
       });
 
       el = await makeEl();
@@ -573,7 +576,7 @@ describe('nx-ew-actions', () => {
       const site = uniq('site');
       restoreFetch = installFetch({
         [`${DA_ADMIN}/config/${org}/`]: { data: [{ key: 'editor.hidePublish', value: `/${org}/${site}/test` }] },
-        [`${DA_ADMIN}/config/${org}/${site}/`]: { data: [] },
+        [`${AEM_API}/${org}/sites/${site}/config/editor/da.json`]: { config: [] },
       });
 
       el = await makeEl();

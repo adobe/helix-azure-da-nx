@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { AEM_API, DA_ADMIN, HLX_ADMIN } from '../../../nx2/utils/utils.js';
+import { AEM_API, HLX_ADMIN } from '../../../nx2/utils/utils.js';
 import {
   calls as sharedCalls,
   installFetch as installFetchOnce,
@@ -25,10 +25,6 @@ const flagHlx6 = (org, site) => {
 let origFetch;
 let calls = [];
 
-// requestAemRole -> api.js's source.get/source.save, which probe isHlx6
-// (HLX_ADMIN/ping/...) before hitting the source endpoint. That ping is
-// served here without consuming a slot in `responses`, which is reserved
-// for the GET/POST calls under test.
 const installFetch = (responses = []) => {
   calls = [];
   origFetch = window.fetch;
@@ -54,10 +50,6 @@ const mockIms = (profile) => {
 
 const clearIms = () => { delete window.adobeIMS; };
 
-// isHlx6 memoizes per org/site at the api.js module level for the lifetime
-// of the test run, so each test uses a fresh org/site pair (same convention
-// as api.test.js) to avoid one test's cached upgrade-status bleeding into
-// another's assertions.
 let counter = 0;
 const uniq = (label) => {
   counter += 1;
@@ -65,7 +57,7 @@ const uniq = (label) => {
 };
 
 const PROFILE = { userId: 'uid-1', email: 'test@adobe.com', displayName: 'Test User' };
-const permUrl = (org, site) => `${DA_ADMIN}/source/${org}/${site}/.da/aem-permission-requests.json`;
+const permUrl = (org, site) => `${AEM_API}/${org}/sites/${site}/source/.da/aem-permission-requests.json`;
 const permCalls = (org, site) => calls.filter((c) => c.url === permUrl(org, site));
 const EMPTY_TPL = '{"users":{"total":1,"limit":1,"offset":0,"data":[]},"data":{"total":1,"limit":1,"offset":0,"data":[{}]},":names":["users","data"],":version":3,":type":"multi-sheet"}';
 
@@ -136,13 +128,9 @@ describe('aem-preview-publish.js', () => {
       const result = await requestAemRole(org, site, 'preview');
       expect(result.message[0]).to.equal('Successfully requested role!');
 
-      // The posted body is FormData — verify the blob content
       const [, postCall] = permCalls(org, site);
-      const formData = postCall.body;
-      expect(formData).to.be.instanceOf(FormData);
-      const blob = formData.get('data');
-      const text = await blob.text();
-      const saved = JSON.parse(text);
+      expect(postCall.body).to.be.a('string');
+      const saved = JSON.parse(postCall.body);
 
       // Verify new user entry for current userId
       expect(saved.users.data.filter((u) => u.Id === PROFILE.userId)).to.have.length(1);
@@ -169,12 +157,8 @@ describe('aem-preview-publish.js', () => {
 
       await requestAemRole(org, site, 'preview');
 
-      // Only one entry expected — verify by checking FormData blob content
       const [, postCall] = permCalls(org, site);
-      const formData = postCall.body;
-      const blob = formData.get('data');
-      const text = await blob.text();
-      const saved = JSON.parse(text);
+      const saved = JSON.parse(postCall.body);
       expect(saved.users.data.filter((u) => u.Id === PROFILE.userId)).to.have.length(1);
       expect(saved.users.data[0].Action).to.equal('preview');
     });
@@ -203,7 +187,7 @@ describe('aem-preview-publish.js', () => {
       expect(result.error.message).to.equal('Invalid action');
     });
 
-    it('preview: legacy hits HLX_ADMIN and resolves the URL from json.preview.url', async () => {
+    it('preview: uses Azure without an upgrade flag and resolves json.preview.url', async () => {
       const org = uniq('org');
       const site = uniq('site');
       installFetchOnce({ body: JSON.stringify({ preview: { url: 'https://legacy-preview.example/page' } }) });
@@ -212,7 +196,7 @@ describe('aem-preview-publish.js', () => {
 
       expect(result.ok).to.equal(true);
       expect(result.url).to.equal('https://legacy-preview.example/page');
-      expect(sharedCalls.some((c) => c.url === `${HLX_ADMIN}/preview/${org}/${site}/main/page`)).to.equal(true);
+      expect(sharedCalls.some((c) => c.url === `${AEM_API}/${org}/sites/${site}/preview/page`)).to.equal(true);
     });
 
     it('preview: hlx6 hits AEM_API instead of HLX_ADMIN', async () => {
@@ -243,8 +227,8 @@ describe('aem-preview-publish.js', () => {
 
       expect(result.ok).to.equal(true);
       expect(result.url).to.equal('https://legacy-live.example/page');
-      expect(sharedCalls.some((c) => c.url === `${HLX_ADMIN}/preview/${org}/${site}/main/page`)).to.equal(true);
-      expect(sharedCalls.some((c) => c.url === `${HLX_ADMIN}/live/${org}/${site}/main/page`)).to.equal(true);
+      expect(sharedCalls.some((c) => c.url === `${AEM_API}/${org}/sites/${site}/preview/page`)).to.equal(true);
+      expect(sharedCalls.some((c) => c.url === `${AEM_API}/${org}/sites/${site}/live/page`)).to.equal(true);
     });
 
     it('returns an authorization error on 401 without a details field', async () => {
