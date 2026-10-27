@@ -181,6 +181,57 @@ describe('aem-preview-publish.js', () => {
   describe('runAemPreviewOrPublish', () => {
     afterEach(() => restoreFetchOnce());
 
+    ['preview', 'publish'].forEach((action) => {
+      it(`${action}: fetches Azure sidekick hosts and preserves the returned webPath`, async () => {
+        const org = uniq('org');
+        const site = uniq('site');
+        const resultBody = JSON.stringify({
+          preview: { url: 'https://fallback.example/page' },
+          live: { url: 'https://fallback.example/page' },
+          webPath: '/folder/page',
+        });
+        const sidekick = {
+          previewHost: 'preview.example',
+          liveHost: 'live.example',
+          ...(action === 'publish' ? { host: 'www.example' } : {}),
+        };
+        installFetch([
+          new Response(resultBody),
+          ...(action === 'publish' ? [new Response(resultBody)] : []),
+          new Response(JSON.stringify(sidekick)),
+        ]);
+
+        const result = await runAemPreviewOrPublish({ aemPath: `/${org}/${site}/page`, action });
+
+        expect(result).to.deep.equal({
+          ok: true,
+          url: `https://${action === 'publish' ? 'www' : 'preview'}.example/folder/page`,
+        });
+        expect(calls.map(({ url, method }) => ({ url, method }))).to.deep.equal([
+          { url: `${AEM_API}/${org}/sites/${site}/preview/page`, method: 'POST' },
+          ...(action === 'publish' ? [{ url: `${AEM_API}/${org}/sites/${site}/live/page`, method: 'POST' }] : []),
+          { url: `${AEM_API}/${org}/sites/${site}/sidekick`, method: 'GET' },
+        ]);
+      });
+    });
+
+    it('uses the preview response URL when Azure sidekick config is unavailable', async () => {
+      const org = uniq('org');
+      const site = uniq('site');
+      installFetch([
+        new Response(JSON.stringify({
+          preview: { url: 'https://fallback.example/page' },
+          webPath: '/page',
+        })),
+        new Response('Not found', { status: 404 }),
+      ]);
+
+      const result = await runAemPreviewOrPublish({ aemPath: `/${org}/${site}/page`, action: 'preview' });
+
+      expect(result).to.deep.equal({ ok: true, url: 'https://fallback.example/page' });
+      expect(calls[1].url).to.equal(`${AEM_API}/${org}/sites/${site}/sidekick`);
+    });
+
     it('rejects an invalid action without making any request', async () => {
       const result = await runAemPreviewOrPublish({ aemPath: '/org/site/page', action: 'bogus' });
       expect(result.ok).to.equal(false);

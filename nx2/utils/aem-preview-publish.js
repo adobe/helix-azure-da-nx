@@ -2,17 +2,13 @@
  * Copyright 2026 Adobe. All rights reserved.
  * AEM admin preview / live (publish) flows aligned with da.live helpers.
  */
-import { HLX_ADMIN } from './utils.js';
+import { AEM_API } from './utils.js';
 import { daFetch, aem, source } from './api.js';
 
 const AEM_PERMISSION_TPL = '{"users":{"total":1,"limit":1,"offset":0,"data":[]},"data":{"total":1,"limit":1,"offset":0,"data":[{}]},":names":["users","data"],":version":3,":type":"multi-sheet"}';
 
 async function fetchSidekickHosts(org, site) {
-  const path = `/${org}/${site}/config.json`;
-  const [owner, repo, ...parts] = path.slice(1).split('/');
-  const name = parts.pop() || repo || owner;
-  parts.push(name.replace('.html', ''));
-  const url = `${HLX_ADMIN}/sidekick/${owner}/${repo}/main/${parts.join('/')}`;
+  const url = `${AEM_API}/${org}/sites/${site}/sidekick`;
   const resp = await daFetch({ url, opts: { method: 'GET' } });
   if (!resp.ok) return {};
   try {
